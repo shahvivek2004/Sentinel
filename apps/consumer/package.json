@@ -1,0 +1,22 @@
+{
+  "name": "consumer",
+  "module": "consumer.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/axios": "^0.14.4",
+    "@types/bun": "latest",
+    "@types/dotenv": "^8.2.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@repo/redis": "*",
+    "axios": "^1.13.6",
+    "dotenv": "^17.3.1"
+  },
+  "scripts": {
+    "start": "bun run consumer.ts"
+  }
+}

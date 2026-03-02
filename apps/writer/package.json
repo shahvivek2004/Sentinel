@@ -1,0 +1,15 @@
+{
+  "name": "writer",
+  "module": "writer.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "start": "bun run writer.ts"
+  }
+}
