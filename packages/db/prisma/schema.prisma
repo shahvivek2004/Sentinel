@@ -20,13 +20,19 @@ model User {
 }
 
 model site {
-  id           String       @id @default(uuid())
-  userid       String
-  url          String
-  intervalTime Int
-  timeAdded    DateTime     @default(now())
-  user         User         @relation(fields: [userid], references: [id])
-  ticks        tickStatus[]
+  id             String       @id @default(uuid())
+  userid         String
+  url            String
+  intervalTime   Int
+  timeAdded      DateTime     @default(now())
+  method         String       @default("GET")
+  timeout        Int          @default(5000)
+  body           Json?
+  header         Json?
+  sslVerify      Boolean      @default(true)
+  followRedirect Boolean      @default(true)
+  user           User         @relation(fields: [userid], references: [id])
+  ticks          tickStatus[]
 }
 
 model Region {
@@ -37,11 +43,14 @@ model Region {
 
 model tickStatus {
   id               String     @id @default(uuid())
-  response_time_ms Int
-  status           siteStatus
-  createdAt        DateTime   @default(now())
   region_id        String
   site_id          String
+  createdAt        DateTime   @default(now())
+  status           siteStatus
+  response_time_ms Int
+  statusCode       Int?
+  errorType        String?
+  errorReason      String?
   region           Region     @relation(fields: [region_id], references: [id])
   site             site       @relation(fields: [site_id], references: [id])
 }
@@ -49,5 +58,6 @@ model tickStatus {
 enum siteStatus {
   Up
   Down
+  Warning
   Unknown
 }

@@ -1,6 +1,8 @@
 import "dotenv/config";
 import redisClient from "@repo/redis/client";
 import { sleep } from "bun";
+import type { PrismaJson } from "@repo/db";
+import { Agent } from "undici";
 
 process.on("uncaughtException", (err) => {
     console.error("[FATAL] Uncaught Exception:", err);
@@ -24,6 +26,15 @@ process.on("SIGINT", async () => {
     process.exit(0);
 });
 
+function requireEnv(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+        console.error(`[CONFIG] Missing required env: ${name}`);
+        process.exit(1);
+    }
+    return value;
+}
+
 // ─── Redis error handling ──────────────────────────────────────────────────────
 
 redisClient.on("error", (err) => {
@@ -35,10 +46,16 @@ redisClient.on("reconnecting", (err) => {
 });
 
 type SiteInputData = {
-    id: string;
-    url: string;
-    intervalTime: number; // in seconds
-};
+    id: string,
+    url: string,
+    intervalTime: number,
+    method: string,
+    timeout: number,
+    sslVerify: boolean,
+    followRedirect: boolean,
+    body?: PrismaJson,
+    header?: PrismaJson
+}
 
 type StreamInputData = {
     data: string;
@@ -56,103 +73,148 @@ type StreamResponse = [
     }
 ];
 
+type statusEnum = "Up" | "Down" | "Warning";
 
-const STREAM_NAME = process.env.STREAM_NAME;
-const CONSUMER_GROUP_NAME = process.env.REGION_NAME;
-const CONSUMER_NAME = process.env.WORKER_NAME;
-const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS) || 5000;
+type reportLog = {
+    site_id: string;
+    region_id: string;
+    url: string;
+    status: statusEnum;
+    response_time_ms: number;
+    createdAt: Date;
+    statusCode?: number;
+    errorType?: string;
+    errorReason?: string;
+}
+
+
+const WRITER_STREAM_NAME = requireEnv("WRITER_STREAM_NAME");
+const PRODUCER_STREAM_NAME = requireEnv("PRODUCER_STREAM_NAME");
+const CONSUMER_GROUP_NAME = requireEnv("REGION_ID");
+const CONSUMER_NAME = requireEnv("WORKER_NAME");
 const BLOCK_MS = Number(process.env.BLOCK_MS) || 15000;
 const BATCH_SIZE = Number(process.env.BATCH_SIZE) || 10;
 const RECLAIM_MIN_IDLE_MS = Number(process.env.RECLAIM_MIN_IDLE_MS) || 60000;
 
+const secureAgent = new Agent({
+    connect: {
+        rejectUnauthorized: true
+    }
+});
 
-function logCheck(result: {
-    siteId: string;
-    url: string;
-    status: "UP" | "DOWN" | string;
-    httpStatus?: number;
-    responseTimeMs: number;
-    timestamp: Date;
-    errorType?: string;
-    reason?: string;
-}) {
-    if (result.status === "UP") {
+const unsecureAgent = new Agent({
+    connect: {
+        rejectUnauthorized: false
+    }
+})
+
+function logCheck(result: reportLog) {
+    if (result.status === "Up") {
         console.log(
-            `[UP] | ${result.url} | ${result.httpStatus} | ${result.responseTimeMs}ms | ${result.timestamp}`
+            `[${result.status}] | ${result.url} | ${result.statusCode} | ${result.response_time_ms}ms | ${result.createdAt}`
         );
     } else {
         console.error(
-            `[DOWN] | ${result.url} | ${result.errorType ?? result.reason} | ${result.responseTimeMs}ms | ${result.timestamp}`
+            `[${result.status}] | ${result.url} | ${result.errorReason ?? result.errorType} | ${result.response_time_ms}ms | ${result.createdAt}`
         );
     }
 }
 
-
-async function fetchWebsite(url: string, id: string): Promise<void> {
+async function fetchWebsite(url: string, id: string, method: string, timeout: number, sslVerify: boolean, followRedirect: boolean, headers?: PrismaJson, body?: PrismaJson): Promise<reportLog> {
     const startTime = Date.now();
-    const timestamp = new Date();
+    const createdAt = new Date();
 
     try {
-        const response = await fetch(url, {
-            method: "GET",
-            signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-            redirect: "follow",
-        });
+        const finalTimeout = Math.max(1000, Math.min(timeout, 15000));
+        let fetchOptions: RequestInit = {
+            method,
+            signal: AbortSignal.timeout(finalTimeout),
+            redirect: followRedirect ? "follow" : "manual",
+            dispatcher: (sslVerify ? secureAgent : unsecureAgent) as any
+        };
+
+        if (body && typeof body === "object" && method !== "GET" && method !== "HEAD") {
+            fetchOptions.body = JSON.stringify(body);
+        }
+
+        if (headers && typeof headers === "object" && !Array.isArray(headers)) {
+            let value = headers as Record<string, string>;
+            if (body) {
+                value = { "Content-Type": "application/json", ...value }
+            }
+            fetchOptions.headers = value;
+        }
+
+        const response = await fetch(url, fetchOptions);
 
         await response.body?.cancel();
-
         const responseTime = Date.now() - startTime;
         const isUp = response.status >= 200 && response.status < 400;
 
-        const log = {
-            siteId: id,
+        let log: reportLog = {
+            site_id: id,
+            region_id: CONSUMER_GROUP_NAME!,
             url,
-            status: isUp ? "UP" : "DOWN",
-            httpStatus: response.status,
-            responseTimeMs: responseTime,
-            timestamp,
+            status: isUp ? "Up" : "Warning",
+            statusCode: response.status,
+            response_time_ms: responseTime,
+            createdAt,
         };
 
-        logCheck(log);
+        if (!isUp) {
+            log.errorType = "HTTP_ERROR";
+            log.errorReason = response.statusText;
+        }
+
+        return log;
 
     } catch (err: any) {
         const responseTime = Date.now() - startTime;
 
-        let reason = "UNKNOWN";
+        let errorReason = "UNKNOWN";
         let errorType = "NETWORK_ERROR";
+        let status: statusEnum = "Down";
 
-        if (err.name === "TimeoutError" || err.name === "AbortError") {
-            reason = "TIMEOUT";
-            errorType = "TIMEOUT";
-        } else if (err.code === "ENOTFOUND") {
-            reason = "DNS_NOT_FOUND";
+        if (err.code === "ENOTFOUND") {
             errorType = "DNS_ERROR";
+            errorReason = "DNS_NOT_FOUND";
         } else if (err.code === "ECONNREFUSED") {
-            reason = "CONNECTION_REFUSED";
+            errorReason = "TCP_CONNECTION_REFUSED";
         } else if (err.code === "ECONNRESET") {
-            reason = "CONNECTION_RESET";
-        } else if (err.message) {
-            reason = err.message;
-        }
-        const log = {
-            siteId: id,
-            url,
-            status: "DOWN",
-            errorType,
-            reason,
-            responseTimeMs: responseTime,
-            timestamp,
+            errorReason = "TCP_CONNECTION_RESET";
+        } else if (err.code === "ETIMEDOUT") {
+            errorType = "TIMEOUT";
+            errorReason = "NETWORK_TIMEOUT";
+        } else if (err.code === "CERT_HAS_EXPIRED") {
+            errorReason = "SSL_EXPIRED"
+        } else if (err.name === "TimeoutError" || err.name === "AbortError") {
+            errorType = "TIMEOUT";
+            errorReason = "REQUEST_TIMEOUT";
+            status = "Warning";
+        } else {
+            errorReason = `${err.name}: ${err.message}`;
         }
 
-        logCheck(log);
+        const log: reportLog = {
+            site_id: id,
+            region_id: CONSUMER_GROUP_NAME!,
+            url,
+            status: status,
+            errorType,
+            errorReason,
+            response_time_ms: responseTime,
+            createdAt,
+        }
+
+        return log;
     }
 }
 
 
 async function createConsumerGroup(): Promise<void> {
-    console.log(`[WORKER] ${CONSUMER_NAME} started. Listening on stream "${STREAM_NAME}"...`);
+    console.log(`[WORKER] ${CONSUMER_NAME} started. Listening on stream "${PRODUCER_STREAM_NAME}"...`);
     try {
-        await redisClient.xGroupCreate(STREAM_NAME!, CONSUMER_GROUP_NAME!, "$", {
+        await redisClient.xGroupCreate(PRODUCER_STREAM_NAME!, CONSUMER_GROUP_NAME!, "$", {
             MKSTREAM: true,
         });
         console.log(`[INIT] Consumer group "${CONSUMER_GROUP_NAME}" created.`);
@@ -171,7 +233,7 @@ async function readConsumerGroup(): Promise<StreamData[]> {
         const response = (await redisClient.xReadGroup(
             CONSUMER_GROUP_NAME!,
             CONSUMER_NAME!,
-            { key: STREAM_NAME!, id: ">" },
+            { key: PRODUCER_STREAM_NAME!, id: ">" },
             { COUNT: BATCH_SIZE, BLOCK: BLOCK_MS }
         )) as StreamResponse | null;
 
@@ -186,7 +248,7 @@ async function readConsumerGroup(): Promise<StreamData[]> {
 async function reclaimMessages(): Promise<StreamData[]> {
     try {
         const response = await redisClient.xAutoClaim(
-            STREAM_NAME!,
+            PRODUCER_STREAM_NAME!,
             CONSUMER_GROUP_NAME!,
             CONSUMER_NAME!,
             RECLAIM_MIN_IDLE_MS,
@@ -194,7 +256,6 @@ async function reclaimMessages(): Promise<StreamData[]> {
             { COUNT: BATCH_SIZE }
         );
 
-        // Dead-letter: if a message has been delivered too many times, just ACK and skip it
         const MAX_DELIVERIES = 3;
         const deadIds: string[] = [];
         const validMessages: StreamData[] = [];
@@ -211,8 +272,8 @@ async function reclaimMessages(): Promise<StreamData[]> {
         }
 
         if (deadIds.length) {
-            console.log("[DEAD] Dead message cleared succesfully");
-            await redisClient.xAck(STREAM_NAME!, CONSUMER_GROUP_NAME!, deadIds);
+            //console.log("[DEAD] Dead message cleared succesfully");
+            await redisClient.xAck(PRODUCER_STREAM_NAME!, CONSUMER_GROUP_NAME!, deadIds);
         }
 
         return validMessages;
@@ -231,25 +292,34 @@ async function processMessages(messages: StreamData[]): Promise<void> {
     const fetchTasks = messages.map(({ id, message }) => {
         try {
             const parsed = JSON.parse(message.data) as SiteInputData;
-            return fetchWebsite(parsed.url, parsed.id);
+            return fetchWebsite(parsed.url, parsed.id, parsed.method, parsed.timeout, parsed.sslVerify, parsed.followRedirect, parsed.header, parsed.body);
         } catch (parseErr) {
             console.error(`[PARSE] Bad data id=${id}`);
-            return Promise.resolve();
+            return Promise.resolve(null);
         }
     });
 
-    // We use a Promise.all with a race to ensure processing doesn't hang the loop
     try {
-        await Promise.allSettled(fetchTasks);
+        const reports = await Promise.allSettled(fetchTasks);
+        const pipeline = redisClient.multi();
+        for (const item of reports) {
+            if (item.status === "fulfilled") {
+                if (item.value) {
+                    logCheck(item.value);
+                    pipeline.xAdd(WRITER_STREAM_NAME!, "*", { data: JSON.stringify(item.value) });
+                }
+            } else {
+                console.error(`[PROMISE] failed to resolve:`, item.reason);
+            }
+        }
+        await pipeline.exec();
     } catch (error) {
-        console.error(`[PROMISE] failed to resolve all`);
+        console.error(`[UNEXPECTED] worker failed : `, error);
     }
 
     try {
         if (eventIds.length > 0) {
-            await redisClient.xAckDel(STREAM_NAME!, CONSUMER_GROUP_NAME!, eventIds, "ACKED");
-        } else {
-            console.log(`[ACK] no messages.`);
+            await redisClient.xAckDel(PRODUCER_STREAM_NAME!, CONSUMER_GROUP_NAME!, eventIds, "ACKED");
         }
     } catch (err) {
         console.error("[ACK] xAck failed: ", err);
@@ -258,11 +328,10 @@ async function processMessages(messages: StreamData[]): Promise<void> {
 
 
 async function consumer() {
-    // 1. Always check for stale/pending messages first
     try {
         const reclaimed = await reclaimMessages();
         if (reclaimed.length > 0) {
-            console.log("[RECLAIM] messages reclaimed successfully.");
+            //console.log("[RECLAIM] messages reclaimed successfully.");
             await processMessages(reclaimed);
             return;
         }
@@ -270,9 +339,8 @@ async function consumer() {
         console.error(`[RECLAIM] unable to process reclaimed messages: ${error}`);
     }
 
-    // 2. Read and process new messages (blocks up to BLOCK_MS if empty)
     try {
-        console.log("[WAIT] Waiting for message.");
+        //console.log("[WAIT] Waiting for message.");
         const fresh = await readConsumerGroup();
         if (fresh.length > 0) {
             await processMessages(fresh);

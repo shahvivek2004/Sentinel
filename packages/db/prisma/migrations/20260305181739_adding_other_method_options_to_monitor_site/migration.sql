@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "site" ADD COLUMN     "body" JSONB,
+ADD COLUMN     "header" JSONB,
+ADD COLUMN     "method" TEXT NOT NULL DEFAULT 'GET',
+ADD COLUMN     "timeout" INTEGER NOT NULL DEFAULT 5000;

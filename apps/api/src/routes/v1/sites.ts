@@ -18,30 +18,54 @@ interface authRequest extends Request {
 // insert site which needs to be monitored
 sitesRouter.post('/url', authMiddleware, async (req: Request, res: Response) => {
 
-    if (!req.body.url) {
+    if (!STORE_NAME) throw Error("Store name not provided!");
+
+    if (!req.body.url || !req.body.intervalTime) {
         sendResponse(res, 400, "Bad request!");
         return;
     }
 
-    if (!STORE_NAME) throw Error("Store name not provided!");
+    const method = req.body.method ?? "GET";
 
-    const userId = (req as authRequest).userId;
+    const allowedMethods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"];
+
+    if (!allowedMethods.includes(method)) {
+        sendResponse(res, 400, "Invalid HTTP method");
+        return;
+    }
+
+    const toBeInsertedData = {
+        userid: (req as authRequest).userId,
+        url: req.body.url,
+        intervalTime: req.body.intervalTime,
+        method,
+        timeout: req.body.timeout ?? 5000,
+        sslVerify: req.body.sslVerify ?? true,
+        followRedirect: req.body.followRedirect ?? true,
+        body: method === "GET" || method === "HEAD" ? undefined : req.body.body,
+        header: req.body.header ?? {}
+    };
 
     try {
         const website = await db.site.create({
-            data: {
-                userid: userId,
-                url: req.body.url,
-                intervalTime: req.body.intervalTime
-            },
+            data: toBeInsertedData,
             select: {
                 id: true,
                 url: true,
-                intervalTime: true
+                intervalTime: true,
+                method: true,
+                timeout: true,
+                body: true,
+                header: true
             }
         });
 
-        await redisClient.zAdd(STORE_NAME, { score: Math.floor(Date.now() / 1000), value: JSON.stringify(website) });
+        const nextRun = Math.floor(Date.now() / 1000) + website.intervalTime;
+        await redisClient.zAdd(STORE_NAME, {
+            score: nextRun,
+            value: JSON.stringify(website)
+        });
+
         sendResponse(res, 201, { siteId: website.id });
     } catch (error) {
         sendResponse(res, 500, "Internal server error!");
