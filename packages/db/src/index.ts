@@ -9,3 +9,4 @@ const db = new PrismaClient({ adapter });
 
 export { db };
 export type PrismaJson = Prisma.JsonValue;
+export type PrismaInputJson = Prisma.InputJsonValue;

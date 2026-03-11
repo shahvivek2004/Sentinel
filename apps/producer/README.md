@@ -9,8 +9,9 @@ bun install
 To run:
 
 ```bash
-STORE_NAME=monitor_ticks \
+STORE_NAME=monitor:scheduler \
 STREAM_NAME=monitor:jobs:queued \
+HASH_STORE_NAME=monitor:cache \
 bun start
 ```
 

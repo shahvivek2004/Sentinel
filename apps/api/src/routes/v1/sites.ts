@@ -1,105 +1,189 @@
 import { Router, type Request, type Response } from "express";
 
-import { db } from "@repo/db";
-import { sendResponse, STORE_NAME } from "../../utils";
+import { db, type PrismaJson } from "@repo/db";
+import { HASH_STORE_NAME, sendResponse, STORE_NAME } from "../../utils";
 import { authMiddleware } from "../../middleware/auth";
 import redisClient from "@repo/redis/client";
+import {
+  requiredBodyUrlPatch,
+  requiredBodyUrlPost,
+} from "@repo/zod/validation";
 
+type days =
+  | "Sunday"
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday";
+
+type SiteInputData = {
+  id: string;
+  url: string;
+  intervalTime: number;
+  method: string;
+  timeout: number;
+  sslVerify: boolean;
+  followRedirect: boolean;
+  body?: PrismaJson;
+  header?: PrismaJson;
+  maintenanceStartMin: number | null;
+  maintenanceEndMin: number | null;
+  maintenanceDays: days[];
+};
 
 const sitesRouter = Router();
 
 interface authRequest extends Request {
-    userId: string,
-    cookies: {
-        __uIt: string;
-    };
+  userId: string;
+  cookies: {
+    __uIt: string;
+  };
 }
 
-// insert site which needs to be monitored
-sitesRouter.post('/url', authMiddleware, async (req: Request, res: Response) => {
-
-    if (!STORE_NAME) throw Error("Store name not provided!");
-
-    if (!req.body.url || !req.body.intervalTime) {
-        sendResponse(res, 400, "Bad request!");
-        return;
-    }
-
-    const method = req.body.method ?? "GET";
-
-    const allowedMethods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"];
-
-    if (!allowedMethods.includes(method)) {
-        sendResponse(res, 400, "Invalid HTTP method");
-        return;
-    }
-
-    const toBeInsertedData = {
-        userid: (req as authRequest).userId,
-        url: req.body.url,
-        intervalTime: req.body.intervalTime,
-        method,
-        timeout: req.body.timeout ?? 5000,
-        sslVerify: req.body.sslVerify ?? true,
-        followRedirect: req.body.followRedirect ?? true,
-        body: method === "GET" || method === "HEAD" ? undefined : req.body.body,
-        header: req.body.header ?? {}
-    };
-
+// get latest site status by id
+sitesRouter.get(
+  "/status/:siteId",
+  authMiddleware,
+  async (req: Request, res: Response) => {
     try {
-        const website = await db.site.create({
-            data: toBeInsertedData,
-            select: {
-                id: true,
-                url: true,
-                intervalTime: true,
-                method: true,
-                timeout: true,
-                body: true,
-                header: true
-            }
-        });
-
-        const nextRun = Math.floor(Date.now() / 1000) + website.intervalTime;
-        await redisClient.zAdd(STORE_NAME, {
-            score: nextRun,
-            value: JSON.stringify(website)
-        });
-
-        sendResponse(res, 201, { siteId: website.id });
-    } catch (error) {
-        sendResponse(res, 500, "Internal server error!");
-    }
-})
-
-// get latest site status
-sitesRouter.get('/status/:siteId', authMiddleware, async (req: Request, res: Response) => {
-    try {
-        const website = await db.site.findFirst({
+      const siteId = req.params.siteId as string;
+      const website = await db.site.findUnique({
+        where: {
+          id: siteId,
+        },
+        include: {
+          ticks: {
             where: {
-                userid: (req as authRequest).userId,
-                id: req.params.siteId as string
+              site_id: siteId,
             },
-            include: {
-                ticks: {
-                    orderBy: [{
-                        createdAt: "desc"
-                    }],
-                    take: 1
-                }
-            }
-        });
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+          },
+        },
+      });
 
-        if (!website) {
-            sendResponse(res, 404, "Not found!");
-            return;
-        }
+      if (!website) {
+        sendResponse(res, 404, "Not found!");
+        return;
+      }
 
-        sendResponse(res, 200, { status: website })
+      sendResponse(res, 200, { status: website });
     } catch (error) {
-        sendResponse(res, 500, "Internal server error!");
+      console.error("Failed to GET status: ", error);
+      sendResponse(res, 500, "Internal server error!");
     }
-})
+  },
+);
 
+// insert site which needs to be monitored
+sitesRouter.post(
+  "/url",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as authRequest).userId;
+
+      if (!userId) {
+        sendResponse(res, 401, "Unauthenticated!");
+        return;
+      }
+
+      const result = requiredBodyUrlPost.safeParse(req.body);
+
+      if (!result.success) {
+        const error = result.error.issues[0]?.message ?? "error!";
+        sendResponse(res, 400, error);
+        return;
+      }
+      const website: SiteInputData = await db.site.create({
+        data: {
+          userid: userId,
+          ...result.data,
+        },
+        select: {
+          id: true,
+          url: true,
+          intervalTime: true,
+          method: true,
+          timeout: true,
+          sslVerify: true,
+          followRedirect: true,
+          body: true,
+          header: true,
+          maintenanceStartMin: true,
+          maintenanceEndMin: true,
+          maintenanceDays: true,
+        },
+      });
+
+      const nextRun = Math.floor(Date.now() / 1000) + website.intervalTime;
+      const pipeline = redisClient.multi();
+      pipeline.hSet(HASH_STORE_NAME, website.id, JSON.stringify(website));
+      pipeline.zAdd(STORE_NAME, { score: nextRun, value: website.id });
+      await pipeline.exec();
+      sendResponse(res, 201, { siteId: website.id });
+    } catch (error) {
+      console.error("Failed to POST url: ", error);
+      sendResponse(res, 500, "Internal server error!");
+    }
+  },
+);
+
+// update site configs by siteId
+sitesRouter.patch(
+  "/url/:siteId",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const parsed = requiredBodyUrlPatch.safeParse(req.body);
+      if (!parsed.success) {
+        sendResponse(res, 400, parsed.error.issues[0]?.message ?? "error!");
+        return;
+      }
+
+      const updateData = parsed.data; // already only contains provided fields
+
+      const userId = (req as authRequest).userId;
+      const siteId = req.params.siteId as string;
+
+      const response = await db.site.findUnique({
+        where: {
+          id: siteId,
+        },
+      });
+
+      if (!response) {
+        sendResponse(res, 404, "Not found!");
+        return;
+      }
+
+      if (response.userid !== userId) {
+        sendResponse(res, 403, "Unauthorized!");
+        return;
+      }
+
+      const result: SiteInputData = await db.site.update({
+        where: {
+          id: siteId,
+        },
+        data: updateData,
+      });
+
+      await redisClient.hSet(
+        HASH_STORE_NAME,
+        result.id,
+        JSON.stringify(result),
+      );
+      sendResponse(res, 200, "Updated successfully!");
+    } catch (error) {
+      console.error("Failed to PATCH updates: ", error);
+      sendResponse(res, 500, "Internal server error!");
+    }
+  },
+);
 
 export default sitesRouter;

@@ -9,7 +9,9 @@ bun install
 To run:
 
 ```bash
-WRITER_STREAM_NAME=monitor:reports \
+WRITER_STREAM_NAME=monitor:jobs:reports \
+CONSUMER_GROUP_NAME=db-writers \
+CONSUMER_NAME=writer-1 \
 PUSH_THRESHOLD=50 \
 bun start
 ```

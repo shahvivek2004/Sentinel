@@ -20,19 +20,22 @@ model User {
 }
 
 model site {
-  id             String       @id @default(uuid())
-  userid         String
-  url            String
-  intervalTime   Int
-  timeAdded      DateTime     @default(now())
-  method         String       @default("GET")
-  timeout        Int          @default(5000)
-  body           Json?
-  header         Json?
-  sslVerify      Boolean      @default(true)
-  followRedirect Boolean      @default(true)
-  user           User         @relation(fields: [userid], references: [id])
-  ticks          tickStatus[]
+  id                  String       @id @default(uuid())
+  userid              String
+  url                 String
+  intervalTime        Int
+  timeAdded           DateTime     @default(now())
+  method              String       @default("GET")
+  timeout             Int          @default(5000)
+  body                Json?
+  header              Json?
+  sslVerify           Boolean      @default(true)
+  followRedirect      Boolean      @default(true)
+  maintenanceStartMin Int?
+  maintenanceEndMin   Int?
+  maintenanceDays     days[]       @default([])
+  user                User         @relation(fields: [userid], references: [id])
+  ticks               tickStatus[]
 }
 
 model Region {
@@ -60,4 +63,14 @@ enum siteStatus {
   Down
   Warning
   Unknown
+}
+
+enum days {
+  Sunday
+  Monday
+  Tuesday
+  Wednesday
+  Thursday
+  Friday
+  Saturday
 }

@@ -9,7 +9,7 @@ bun install
 To run:
 
 ```bash
-WRITER_STREAM_NAME=monitor:reports \
+WRITER_STREAM_NAME=monitor:jobs:reports \
 PRODUCER_STREAM_NAME=monitor:jobs:queued \
 REGION_ID=asia-(enter uuid here) \
 WORKER_NAME=worker-1 \
