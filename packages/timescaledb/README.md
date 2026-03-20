@@ -1,4 +1,4 @@
-# writer
+# timescaledb
 
 To install dependencies:
 
@@ -9,8 +9,7 @@ bun install
 To run:
 
 ```bash
-CONSUMER_NAME=writer-(enter unique number/string here) \
-bun start
+bun run index.ts
 ```
 
 This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

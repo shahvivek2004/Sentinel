@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type PrismaJson, type PrismaInputJson } from "@repo/db";
+import { type PrismaInputJson } from "@repo/db";
 
 export const requiredBodySignup = z.object({
   email: z
@@ -74,7 +74,7 @@ const prismaJsonSchema: z.ZodType<PrismaInputJson> = z.lazy(() =>
 );
 
 export const requiredBodyUrlPost = z.object({
-  url: z.httpUrl({ error: "Provided URL should be in HTTP or HTTPS protocol" }),
+  url: z.httpUrl({ error: "Provided URL should be in HTTP or HTTPS URL format" }),
   intervalTime: z
     .number({ error: "Interval time must be number" })
     .int()
@@ -118,7 +118,7 @@ export const requiredBodyUrlPost = z.object({
 
 export const requiredBodyUrlPatch = z
   .object({
-    url: z.url({ error: "Provided URL should be in HTTP or HTTPS protocol" }),
+    url: z.url({ error: "Provided URL should be in HTTP or HTTPS URL format" }),
     intervalTime: z
       .number({ error: "Interval time must be a number" })
       .int()

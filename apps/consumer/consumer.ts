@@ -4,7 +4,7 @@ import redisClient from "@repo/redis/client";
 import { sleep } from "bun";
 import type { PrismaJson } from "@repo/db";
 import { Agent } from "undici";
-import { parse } from "dotenv";
+
 
 process.on("uncaughtException", (err) => {
   console.error("[FATAL] Uncaught Exception:", err);
@@ -95,19 +95,19 @@ type reportLog = {
   url: string;
   status: statusEnum;
   response_time_ms: number;
-  createdAt: Date;
+  created_at: Date;
   doNotify: boolean;
-  statusCode?: number;
-  errorType?: string;
-  errorReason?: string;
+  status_code?: number;
+  error_type?: string;
+  error_reason?: string;
 };
 
 const WRITER_STREAM_NAME = requireEnv("WRITER_STREAM_NAME");
 const PRODUCER_STREAM_NAME = requireEnv("PRODUCER_STREAM_NAME");
-const CONSUMER_GROUP_NAME = requireEnv("REGION_ID");
-const CONSUMER_NAME = requireEnv("WORKER_NAME");
+const CONSUMER_GROUP_NAME = requireEnv("CONSUMER_GROUP_NAME");
+const CONSUMER_NAME = requireEnv("CONSUMER_NAME");
 const BLOCK_MS = Number(process.env.BLOCK_MS) || 30000;
-const BATCH_SIZE = Number(process.env.BATCH_SIZE) || 50;
+const BATCH_SIZE = Number(process.env.BATCH_SIZE) || 300;
 const RECLAIM_MIN_IDLE_MS = Number(process.env.RECLAIM_MIN_IDLE_MS) || 60000;
 
 const secureAgent = new Agent({
@@ -163,11 +163,11 @@ function isMaintenance(t: Date, s: number | null, e: number | null, d: days[]) {
 function logCheck(result: reportLog) {
   if (result.status === "Up") {
     console.log(
-      `[${result.status}] | ${result.url} | ${result.statusCode} | ${result.response_time_ms}ms | ${result.createdAt}`,
+      `[${result.status}] | ${result.url} | ${result.status_code} | ${result.response_time_ms}ms | ${result.created_at}`,
     );
   } else {
     console.error(
-      `[${result.status}] | ${result.url} | ${result.errorReason ?? result.errorType} | ${result.response_time_ms}ms | ${result.createdAt}`,
+      `[${result.status}] | ${result.url} | ${result.error_reason ?? result.error_type} | ${result.response_time_ms}ms | ${result.created_at}`,
     );
   }
 }
@@ -186,7 +186,7 @@ async function fetchWebsite(
   body?: PrismaJson,
 ): Promise<reportLog> {
   const startTime = Date.now();
-  const createdAt = new Date();
+  const created_at = new Date();
   try {
     const finalTimeout = Math.max(1000, Math.min(timeout, 15000));
     let fetchOptions: RequestInit = {
@@ -230,53 +230,53 @@ async function fetchWebsite(
       region_id: CONSUMER_GROUP_NAME,
       url,
       status,
-      statusCode: response.status,
+      status_code: response.status,
       response_time_ms: responseTime,
       doNotify: false,
-      createdAt,
+      created_at,
     };
 
     if (status !== "Up") {
       log.doNotify = !isMaintenance(
-        createdAt,
+        created_at,
         maintenanceStartMin,
         maintenanceEndMin,
         maintenanceDays,
       );
-      log.errorType = "HTTP_ERROR";
-      log.errorReason = response.statusText;
+      log.error_type = "HTTP_ERROR";
+      log.error_reason = response.statusText;
     }
 
     return log;
   } catch (err: any) {
     const responseTime = Date.now() - startTime;
 
-    let errorReason = "UNKNOWN";
-    let errorType = "NETWORK_ERROR";
+    let error_reason = "UNKNOWN";
+    let error_type = "NETWORK_ERROR";
     let status: statusEnum = "Down";
 
     if (err.code === "ENOTFOUND") {
-      errorType = "DNS_ERROR";
-      errorReason = "DNS_NOT_FOUND";
+      error_type = "DNS_ERROR";
+      error_reason = "DNS_NOT_FOUND";
     } else if (err.code === "ECONNREFUSED") {
-      errorReason = "TCP_CONNECTION_REFUSED";
+      error_reason = "TCP_CONNECTION_REFUSED";
     } else if (err.code === "ECONNRESET") {
-      errorReason = "TCP_CONNECTION_RESET";
+      error_reason = "TCP_CONNECTION_RESET";
     } else if (err.code === "ETIMEDOUT") {
-      errorType = "TIMEOUT";
-      errorReason = "NETWORK_TIMEOUT";
+      error_type = "TIMEOUT";
+      error_reason = "NETWORK_TIMEOUT";
     } else if (err.code === "CERT_HAS_EXPIRED") {
-      errorReason = "SSL_EXPIRED";
+      error_reason = "SSL_EXPIRED";
     } else if (
       err.name === "TimeoutError" ||
       err.name === "AbortError" ||
       err.code === "UND_ERR_ABORTED"
     ) {
-      errorType = "TIMEOUT";
-      errorReason = "REQUEST_TIMEOUT";
+      error_type = "TIMEOUT";
+      error_reason = "REQUEST_TIMEOUT";
       status = "Warning";
     } else {
-      errorReason = `${err.name}: ${err.message}`;
+      error_reason = `${err.name}: ${err.message}`;
     }
 
     const log: reportLog = {
@@ -284,16 +284,16 @@ async function fetchWebsite(
       region_id: CONSUMER_GROUP_NAME,
       url,
       status,
-      errorType,
-      errorReason,
+      error_type,
+      error_reason,
       response_time_ms: responseTime,
       doNotify: !isMaintenance(
-        createdAt,
+        created_at,
         maintenanceStartMin,
         maintenanceEndMin,
         maintenanceDays,
       ),
-      createdAt,
+      created_at,
     };
 
     return log;
@@ -378,7 +378,7 @@ async function reclaimMessages(): Promise<StreamData[]> {
     }
 
     if (deadIds.length) {
-      await redisClient.xAck(
+      await redisClient.xAckDel(
         PRODUCER_STREAM_NAME,
         CONSUMER_GROUP_NAME,
         deadIds,

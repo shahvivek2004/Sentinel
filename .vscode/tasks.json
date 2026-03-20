@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "sqlproj: Build sentinel",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"c:/21BCE274/Boss Projects/betteruptime-bun/sentinel/sentinel.sqlproj"
+			],
+			"problemMatcher": "$sqlproj-problem-matcher",
+			"isBackground": true,
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "Builds the sentinel SQL project"
+		}
+	]
+}

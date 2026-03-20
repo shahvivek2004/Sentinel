@@ -42,43 +42,6 @@ interface authRequest extends Request {
   };
 }
 
-// get latest site status by id
-sitesRouter.get(
-  "/status/:siteId",
-  authMiddleware,
-  async (req: Request, res: Response) => {
-    try {
-      const siteId = req.params.siteId as string;
-      const website = await db.site.findUnique({
-        where: {
-          id: siteId,
-        },
-        include: {
-          ticks: {
-            where: {
-              site_id: siteId,
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-            take: 1,
-          },
-        },
-      });
-
-      if (!website) {
-        sendResponse(res, 404, "Not found!");
-        return;
-      }
-
-      sendResponse(res, 200, { status: website });
-    } catch (error) {
-      console.error("Failed to GET status: ", error);
-      sendResponse(res, 500, "Internal server error!");
-    }
-  },
-);
-
 // insert site which needs to be monitored
 sitesRouter.post(
   "/url",
@@ -99,25 +62,36 @@ sitesRouter.post(
         sendResponse(res, 400, error);
         return;
       }
-      const website: SiteInputData = await db.site.create({
-        data: {
-          userid: userId,
-          ...result.data,
-        },
-        select: {
-          id: true,
-          url: true,
-          intervalTime: true,
-          method: true,
-          timeout: true,
-          sslVerify: true,
-          followRedirect: true,
-          body: true,
-          header: true,
-          maintenanceStartMin: true,
-          maintenanceEndMin: true,
-          maintenanceDays: true,
-        },
+
+      const [website] = await db.$transaction(async (tx) => {
+        const monitorCount = await tx.site.count({
+          where: { userid: userId },
+        });
+
+        if (monitorCount >= 5) {
+          throw new Error("LIMIT_REACHED");
+        }
+
+        return [await tx.site.create({
+          data: {
+            userid: userId,
+            ...result.data,
+          },
+          select: {
+            id: true,
+            url: true,
+            intervalTime: true,
+            method: true,
+            timeout: true,
+            sslVerify: true,
+            followRedirect: true,
+            body: true,
+            header: true,
+            maintenanceStartMin: true,
+            maintenanceEndMin: true,
+            maintenanceDays: true,
+          },
+        })];
       });
 
       const nextRun = Math.floor(Date.now() / 1000) + website.intervalTime;
@@ -126,7 +100,11 @@ sitesRouter.post(
       pipeline.zAdd(STORE_NAME, { score: nextRun, value: website.id });
       await pipeline.exec();
       sendResponse(res, 201, { siteId: website.id });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === "LIMIT_REACHED") {
+        sendResponse(res, 403, "Free plan limit reached. Upgrade to add more monitors.");
+        return;
+      }
       console.error("Failed to POST url: ", error);
       sendResponse(res, 500, "Internal server error!");
     }
@@ -139,6 +117,18 @@ sitesRouter.patch(
   authMiddleware,
   async (req: Request, res: Response) => {
     try {
+      const userId = (req as authRequest).userId;
+      const siteId = req.params.siteId as string;
+
+      if (!siteId) {
+        sendResponse(res, 400, "Bad request!");
+      }
+
+      if (!userId) {
+        sendResponse(res, 401, "Unauthenticated!");
+        return;
+      }
+
       const parsed = requiredBodyUrlPatch.safeParse(req.body);
       if (!parsed.success) {
         sendResponse(res, 400, parsed.error.issues[0]?.message ?? "error!");
@@ -146,9 +136,6 @@ sitesRouter.patch(
       }
 
       const updateData = parsed.data; // already only contains provided fields
-
-      const userId = (req as authRequest).userId;
-      const siteId = req.params.siteId as string;
 
       const response = await db.site.findUnique({
         where: {

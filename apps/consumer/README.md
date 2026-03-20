@@ -9,10 +9,8 @@ bun install
 To run:
 
 ```bash
-WRITER_STREAM_NAME=monitor:jobs:reports \
-PRODUCER_STREAM_NAME=monitor:jobs:queued \
-REGION_ID=asia-(enter uuid here) \
-WORKER_NAME=worker-1 \
+CONSUMER_GROUP_NAME=(enter region-id here) \
+CONSUMER_NAME=worker-(enter unique number/string here) \
 bun start
 ```
 

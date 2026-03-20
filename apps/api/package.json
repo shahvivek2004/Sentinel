@@ -18,9 +18,10 @@
     "start": "bun run ./src/index.ts"
   },
   "dependencies": {
+    "@repo/timescaledb": "*",
     "@repo/db": "*",
     "@repo/zod": "*",
-    "@repo/redis":"*",
+    "@repo/redis": "*",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

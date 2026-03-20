@@ -1,7 +1,8 @@
-import { db } from "@repo/db";
+// writer.ts
 import redisClient from "@repo/redis/client";
 import { sleep } from "bun";
 import "dotenv/config";
+import { pool } from "@repo/timescaledb";
 
 type StreamInputData = {
   data: string;
@@ -25,11 +26,11 @@ type reportLog = {
   url: string;
   status: "Up" | "Down" | "Warning";
   response_time_ms: number;
-  createdAt: Date;
+  created_at: Date;
   doNotify: boolean;
-  statusCode?: number;
-  errorType?: string;
-  errorReason?: string;
+  status_code?: number;
+  error_type?: string;
+  error_reason?: string;
 };
 
 type dbLog = Omit<reportLog, "url" | "doNotify">;
@@ -48,7 +49,7 @@ const WRITER_STREAM_NAME = requireEnv("WRITER_STREAM_NAME");
 const CONSUMER_GROUP_NAME = requireEnv("CONSUMER_GROUP_NAME");
 const CONSUMER_NAME = requireEnv("CONSUMER_NAME");
 const BLOCK_MS = Number(process.env.BLOCK_MS) || 30000;
-const BATCH_SIZE = Number(process.env.BATCH_SIZE) || 50;
+const BATCH_SIZE = Number(process.env.BATCH_SIZE) || 300;
 const RECLAIM_MIN_IDLE_MS = Number(process.env.RECLAIM_MIN_IDLE_MS) || 60000;
 
 let eventIds: string[] = [];
@@ -134,7 +135,7 @@ async function reclaimMessages(): Promise<StreamData[]> {
     }
 
     if (deadIds.length) {
-      await redisClient.xAck(WRITER_STREAM_NAME, CONSUMER_GROUP_NAME, deadIds);
+      await redisClient.xAckDel(WRITER_STREAM_NAME, CONSUMER_GROUP_NAME, deadIds);
     }
 
     return validMessages;
@@ -156,7 +157,7 @@ async function processMessages(getReport: StreamData[]) {
       const { url, doNotify, ...dbRow } = value;
 
       // do something to notify user here
-      // just to check log the alarm mock
+      // just to check log the alarm mockv
       if (dbRow.status !== "Up" && !doNotify) {
         console.log(
           `${url} is right now : ${dbRow.status} but due to maintenance`,
@@ -169,15 +170,14 @@ async function processMessages(getReport: StreamData[]) {
     }
   }
 
-  if (
-    dbLogs.length >= PUSH_THRESHOLD ||
-    (dbLogs.length > 0 && lapsedTime >= 60000)
-  ) {
+  if (dbLogs.length >= PUSH_THRESHOLD || (dbLogs.length > 0 && lapsedTime >= 180000)) {
     try {
-      await Promise.all([
-        db.tickStatus.createMany({ data: dbLogs }),
-        redisClient.xDel(WRITER_STREAM_NAME, eventIds),
-      ]);
+      // await Promise.all([
+      //   db.tickStatus.createMany({ data: dbLogs }),
+      //   redisClient.xDel(WRITER_STREAM_NAME, eventIds),
+      // ]);
+      await insertBatch(dbLogs);
+      await redisClient.xAckDel(WRITER_STREAM_NAME, CONSUMER_GROUP_NAME, eventIds);
       dbLogs = [];
       eventIds = [];
       lastSaveTime = Date.now();
@@ -206,6 +206,41 @@ async function writer() {
   } catch (error) {
     console.error(`[STREAM] unable to process stream message: `, error);
   }
+}
+
+async function insertBatch(dbLogs: dbLog[]) {
+  if (dbLogs.length === 0) return;
+
+  const values: any[] = [];
+  const placeholders: string[] = [];
+
+  dbLogs.forEach((log, i) => {
+    const idx = i * 8; // number of columns
+
+    placeholders.push(
+      `($${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5}, $${idx + 6}, $${idx + 7}, $${idx + 8})`
+    );
+
+    values.push(
+      log.site_id,
+      log.region_id,
+      log.created_at,
+      log.status,
+      log.response_time_ms,
+      log.status_code ?? null,
+      log.error_type ?? null,
+      log.error_reason ?? null
+    );
+  });
+
+  const query = `
+    INSERT INTO raw_tick_status 
+    (site_id, region_id, created_at, status, response_time_ms, status_code, error_type, error_reason)
+    VALUES ${placeholders.join(",")}
+    ON CONFLICT DO NOTHING
+  `;
+
+  await pool.query(query, values);
 }
 
 async function loop(): Promise<void> {

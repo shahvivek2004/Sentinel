@@ -20,49 +20,45 @@ model User {
 }
 
 model site {
-  id                  String       @id @default(uuid())
+  id                  String     @id @default(uuid())
   userid              String
   url                 String
+  timeAdded           DateTime   @default(now())
   intervalTime        Int
-  timeAdded           DateTime     @default(now())
-  method              String       @default("GET")
-  timeout             Int          @default(5000)
   body                Json?
   header              Json?
-  sslVerify           Boolean      @default(true)
-  followRedirect      Boolean      @default(true)
-  maintenanceStartMin Int?
+  method              String     @default("GET")
+  timeout             Int        @default(5000)
+  followRedirect      Boolean    @default(true)
+  sslVerify           Boolean    @default(true)
+  maintenanceDays     days[]     @default([])
   maintenanceEndMin   Int?
-  maintenanceDays     days[]       @default([])
-  user                User         @relation(fields: [userid], references: [id])
-  ticks               tickStatus[]
+  maintenanceStartMin Int?
+  incidents           Incident[]
+  user                User       @relation(fields: [userid], references: [id])
 }
 
 model Region {
-  id    String       @id @default(uuid())
-  name  String       @unique
-  ticks tickStatus[]
+  id   String @id @default(uuid())
+  name String @unique
 }
 
-model tickStatus {
-  id               String     @id @default(uuid())
-  region_id        String
-  site_id          String
-  createdAt        DateTime   @default(now())
-  status           siteStatus
-  response_time_ms Int
-  statusCode       Int?
-  errorType        String?
-  errorReason      String?
-  region           Region     @relation(fields: [region_id], references: [id])
-  site             site       @relation(fields: [site_id], references: [id])
+model Incident {
+  id              String    @id @default(uuid())
+  siteId          String
+  startedAt       DateTime
+  resolvedAt      DateTime?
+  durationSeconds Int?
+  site            site      @relation(fields: [siteId], references: [id])
+
+  @@index([siteId, startedAt(sort: Desc)])
 }
 
 enum siteStatus {
   Up
   Down
-  Warning
   Unknown
+  Warning
 }
 
 enum days {
