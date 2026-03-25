@@ -74,7 +74,9 @@ const prismaJsonSchema: z.ZodType<PrismaInputJson> = z.lazy(() =>
 );
 
 export const requiredBodyUrlPost = z.object({
-  url: z.httpUrl({ error: "Provided URL should be in HTTP or HTTPS URL format" }),
+  url: z.httpUrl({
+    error: "Provided URL should be in HTTP or HTTPS URL format",
+  }),
   intervalTime: z
     .number({ error: "Interval time must be number" })
     .int()

@@ -23,14 +23,18 @@ export default function Footer() {
                 />
                 <circle cx="14" cy="14" r="3" fill="#22D3EE" />
               </svg>
-              <span className="font-semibold text-white text-base">Sentinel</span>
+              <span className="font-semibold text-white text-base">
+                Sentinel
+              </span>
             </div>
             <p className="text-xs text-zinc-600 leading-relaxed">
               Uptime monitoring built for modern engineering teams.
             </p>
             <div className="flex items-center gap-2 mt-4">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-              <span className="text-xs text-zinc-600">All systems operational</span>
+              <span className="text-xs text-zinc-600">
+                All systems operational
+              </span>
             </div>
           </div>
 

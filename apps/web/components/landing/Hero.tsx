@@ -7,10 +7,20 @@ function seededRandom(seed: number): number {
 }
 
 const MONITORS = [
-  { name: "api.myapp.com",       status: "up",       latency: "48ms",  uptime: "99.99%" },
-  { name: "myapp.com",           status: "up",       latency: "61ms",  uptime: "100%"   },
-  { name: "dashboard.myapp.com", status: "up",       latency: "89ms",  uptime: "99.97%" },
-  { name: "cdn.myapp.com",       status: "degraded", latency: "312ms", uptime: "99.71%" },
+  { name: "api.myapp.com", status: "up", latency: "48ms", uptime: "99.99%" },
+  { name: "myapp.com", status: "up", latency: "61ms", uptime: "100%" },
+  {
+    name: "dashboard.myapp.com",
+    status: "up",
+    latency: "89ms",
+    uptime: "99.97%",
+  },
+  {
+    name: "cdn.myapp.com",
+    status: "degraded",
+    latency: "312ms",
+    uptime: "99.71%",
+  },
 ];
 
 export default function Hero() {
@@ -38,7 +48,7 @@ export default function Hero() {
       const cy = canvas.offsetHeight / 2;
       const maxR = Math.min(cx, cy) * 0.88;
       for (let i = 0; i < 4; i++) {
-        const phase = ((t / 110) + i * 0.25) % 1;
+        const phase = (t / 110 + i * 0.25) % 1;
         const r = phase * maxR;
         const alpha = (1 - phase) * 0.14;
         ctx.beginPath();
@@ -51,18 +61,30 @@ export default function Hero() {
       id = requestAnimationFrame(draw);
     };
     draw();
-    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", resize); };
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       {/* Grid */}
-      <div className="absolute inset-0 opacity-[0.025]"
-        style={{ backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)", backgroundSize: "64px 64px" }} />
+      <div
+        className="absolute inset-0 opacity-[0.025]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",
+          backgroundSize: "64px 64px",
+        }}
+      />
       {/* Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none" />
       {/* Pulse canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+      />
 
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
         {/* Badge */}
@@ -72,23 +94,33 @@ export default function Hero() {
         </div>
 
         <h1 className="animate-fade-up-d1 text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight mb-6">
-          Know before<br />your users do.
+          Know before
+          <br />
+          your users do.
         </h1>
 
         <p className="animate-fade-up-d2 text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-          Sentinel watches your infrastructure 24/7 from 7+ global locations.
+          Sentinel watches your infrastructure 24/7 from 4+ global locations.
           Get alerted in seconds — not minutes — when something goes wrong.
         </p>
 
         <div className="animate-fade-up-d3 flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">
-          <a href="/signin" className="w-full sm:w-auto bg-cyan-400 text-black font-semibold px-8 py-3.5 rounded-md text-base hover:bg-cyan-300 transition-all duration-200 hover:shadow-[0_0_30px_rgba(34,211,238,0.4)]">
+          <a
+            href="/signin"
+            className="w-full sm:w-auto bg-cyan-400 text-black font-semibold px-8 py-3.5 rounded-md text-base hover:bg-cyan-300 transition-all duration-200 hover:shadow-[0_0_30px_rgba(34,211,238,0.4)]"
+          >
             Start monitoring free
           </a>
-          <a href="/signup" className="w-full sm:w-auto border border-white/10 text-zinc-300 font-medium px-8 py-3.5 rounded-md text-base hover:bg-white/5 transition-all duration-200">
+          <a
+            href="/signup"
+            className="w-full sm:w-auto border border-white/10 text-zinc-300 font-medium px-8 py-3.5 rounded-md text-base hover:bg-white/5 transition-all duration-200"
+          >
             View live demo →
           </a>
         </div>
-        <p className="animate-fade-up-d4 text-sm text-zinc-600">Free forever for 5 monitors · No credit card required</p>
+        <p className="animate-fade-up-d4 text-sm text-zinc-600">
+          Free forever for 5 monitors · No credit card required
+        </p>
 
         {/* Dashboard mockup */}
         <div className="animate-fade-up-d4 mt-16 relative">
@@ -110,7 +142,9 @@ export default function Hero() {
                   <p className="text-xs text-zinc-500 mb-1">Overall Status</p>
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                    <span className="text-emerald-400 font-medium text-sm">All systems operational</span>
+                    <span className="text-emerald-400 font-medium text-sm">
+                      All systems operational
+                    </span>
                   </div>
                 </div>
                 <div className="text-right">
@@ -120,17 +154,36 @@ export default function Hero() {
               </div>
 
               {MONITORS.map((m) => (
-                <div key={m.name} className="flex items-center gap-4 py-3 border-b border-white/4 last:border-0">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${m.status === "up" ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
-                  <span className="font-mono text-sm text-zinc-300 flex-1 text-left">{m.name}</span>
+                <div
+                  key={m.name}
+                  className="flex items-center gap-4 py-3 border-b border-white/4 last:border-0"
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${m.status === "up" ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`}
+                  />
+                  <span className="font-mono text-sm text-zinc-300 flex-1 text-left">
+                    {m.name}
+                  </span>
                   <div className="hidden md:flex gap-0.5 items-end h-5">
                     {Array.from({ length: 24 }).map((_, i) => (
-                      <div key={i} className={`w-1 rounded-sm ${m.status === "degraded" && i === 19 ? "bg-amber-400 h-3" : "bg-emerald-500/70"}`}
-                        style={{ height: m.status === "degraded" && i === 19 ? undefined : `${10 + parseFloat(seededRandom(m.name.length * 7 + i * 13).toFixed(2)) * 8}px` }} />
+                      <div
+                        key={i}
+                        className={`w-1 rounded-sm ${m.status === "degraded" && i === 19 ? "bg-amber-400 h-3" : "bg-emerald-500/70"}`}
+                        style={{
+                          height:
+                            m.status === "degraded" && i === 19
+                              ? undefined
+                              : `${10 + parseFloat(seededRandom(m.name.length * 7 + i * 13).toFixed(2)) * 8}px`,
+                        }}
+                      />
                     ))}
                   </div>
-                  <span className="font-mono text-xs text-zinc-500 w-14 text-right">{m.latency}</span>
-                  <span className="text-xs text-zinc-300 font-medium w-14 text-right">{m.uptime}</span>
+                  <span className="font-mono text-xs text-zinc-500 w-14 text-right">
+                    {m.latency}
+                  </span>
+                  <span className="text-xs text-zinc-300 font-medium w-14 text-right">
+                    {m.uptime}
+                  </span>
                 </div>
               ))}
             </div>

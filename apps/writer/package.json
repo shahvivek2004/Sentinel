@@ -11,7 +11,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@repo/timescaledb":"*",
+    "@repo/db": "*",
+    "@repo/timescaledb": "*",
     "@repo/redis": "*",
     "dotenv": "^17.3.1"
   },

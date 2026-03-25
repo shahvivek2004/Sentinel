@@ -26,9 +26,9 @@ const dmMono = DM_Mono({
 
 export const metadata: Metadata = {
   title: "Sentinel — Uptime Monitoring",
-  description: "Know before your users do. Sentinel watches your infrastructure 24/7 from 20+ global locations.",
+  description:
+    "Know before your users do. Sentinel watches your infrastructure 24/7 from 20+ global locations.",
 };
-
 
 export default function RootLayout({
   children,
@@ -37,7 +37,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${dmSans.variable} ${dmMono.variable}`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} ${dmSans.variable} ${dmMono.variable}`}
+      >
         {children}
       </body>
     </html>

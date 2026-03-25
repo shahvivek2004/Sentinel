@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "site" ADD COLUMN     "primeRegionId" TEXT NOT NULL DEFAULT '04c66f73-92fe-4794-ae20-b81e271590b9';

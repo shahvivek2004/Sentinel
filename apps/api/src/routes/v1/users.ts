@@ -1,15 +1,31 @@
 import { Router, type Request, type Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+
 import { db } from "@repo/db";
+import redisClient from "@repo/redis/client";
 import { requiredBodySignin, requiredBodySignup } from "@repo/zod/validation";
 
 import {
   devCookieConfig,
   EXP_TIME,
   JWT_SECRET,
+  LATEST_STATUS_CACHE,
   sendResponse,
+  type authRequest,
 } from "../../utils";
+import { authMiddleware } from "../../middleware/auth";
+
+type redisCache = {
+  site_id: string;
+  region_id: string;
+  status: "Up" | "Down" | "Warning";
+  response_time_ms: number;
+  created_at: Date;
+  status_code?: number;
+  error_type?: string;
+  error_reason?: string;
+};
 
 const usersRouter: Router = Router();
 
@@ -106,7 +122,51 @@ usersRouter.post("/signin", async (req: Request, res: Response) => {
   }
 });
 
-usersRouter.post("/signout", (req: Request, res: Response) => {
+usersRouter.get(
+  "/dashboard",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as authRequest).userId;
+      const userData = await db.user.findUnique({
+        where: {
+          id: userId,
+        },
+        select: {
+          sites: {
+            select: {
+              id: true,
+              url: true,
+              primeRegionId: true,
+              timeAdded: true,
+              intervalTime: true,
+              method: true,
+              timeout: true,
+            },
+          },
+        },
+      });
+
+      if (userData) {
+        const siteIds = userData.sites.map((value) => value.id);
+        const raw = await redisClient.hmGet(LATEST_STATUS_CACHE, siteIds);
+        const result = raw.map((val) => {
+          if (val) return JSON.parse(val) as redisCache;
+          return null;
+        });
+        sendResponse(res, 200, {
+          data: { site_data: userData, latest_data: result },
+        });
+      } else {
+        sendResponse(res, 404, "User not found!");
+      }
+    } catch (error) {
+      sendResponse(res, 500, "Internal server error!");
+    }
+  },
+);
+
+usersRouter.post("/signout", (_, res: Response) => {
   try {
     res
       .status(201)

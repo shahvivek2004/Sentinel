@@ -5,7 +5,6 @@ import { sleep } from "bun";
 import type { PrismaJson } from "@repo/db";
 import { Agent } from "undici";
 
-
 process.on("uncaughtException", (err) => {
   console.error("[FATAL] Uncaught Exception:", err);
   process.exit(1); // Let process manager (PM2/k8s) restart
@@ -64,6 +63,7 @@ type SiteInputData = {
   timeout: number;
   sslVerify: boolean;
   followRedirect: boolean;
+  primeRegionId: string;
   body?: PrismaJson;
   header?: PrismaJson;
   maintenanceStartMin: number | null;
@@ -92,6 +92,7 @@ type statusEnum = "Up" | "Down" | "Warning";
 type reportLog = {
   site_id: string;
   region_id: string;
+  primeRegionId: string;
   url: string;
   status: statusEnum;
   response_time_ms: number;
@@ -175,6 +176,7 @@ function logCheck(result: reportLog) {
 async function fetchWebsite(
   url: string,
   id: string,
+  primeRegionId: string,
   method: string,
   timeout: number,
   sslVerify: boolean,
@@ -233,6 +235,7 @@ async function fetchWebsite(
       status_code: response.status,
       response_time_ms: responseTime,
       doNotify: false,
+      primeRegionId,
       created_at,
     };
 
@@ -282,6 +285,7 @@ async function fetchWebsite(
     const log: reportLog = {
       site_id: id,
       region_id: CONSUMER_GROUP_NAME,
+      primeRegionId,
       url,
       status,
       error_type,
@@ -403,6 +407,7 @@ async function processMessages(messages: StreamData[]): Promise<void> {
       return fetchWebsite(
         parsed.url,
         parsed.id,
+        parsed.primeRegionId,
         parsed.method,
         parsed.timeout,
         parsed.sslVerify,

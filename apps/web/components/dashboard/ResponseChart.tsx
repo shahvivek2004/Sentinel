@@ -6,10 +6,19 @@ type Range = (typeof RANGES)[number];
 
 // Deterministic data sets per range
 function generatePoints(range: Range): number[] {
-  const counts: Record<Range, number> = { "1h": 30, "6h": 36, "24h": 48, "7d": 49, "30d": 60 };
+  const counts: Record<Range, number> = {
+    "1h": 30,
+    "6h": 36,
+    "24h": 48,
+    "7d": 49,
+    "30d": 60,
+  };
   const n = counts[range];
   return Array.from({ length: n }, (_, i) => {
-    const x = Math.sin(i * 0.4 + (RANGES.indexOf(range) * 2)) * 20 + 60 + Math.sin(i * 1.3) * 10;
+    const x =
+      Math.sin(i * 0.4 + RANGES.indexOf(range) * 2) * 20 +
+      60 +
+      Math.sin(i * 1.3) * 10;
     return Math.max(20, Math.min(140, x));
   });
 }
@@ -49,7 +58,10 @@ export default function ResponseChart() {
       ctx.lineWidth = 1;
       for (let i = 0; i <= 4; i++) {
         const y = pad.top + (ch / 4) * i;
-        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + cw, y);
+        ctx.stroke();
         const v = max - ((max - min) / 4) * i;
         ctx.fillStyle = "rgba(255,255,255,0.18)";
         ctx.font = "9px monospace";
@@ -65,7 +77,14 @@ export default function ResponseChart() {
       ctx.moveTo(tx(0), ty(points[0]!));
       for (let i = 1; i < points.length; i++) {
         const cpx = (tx(i - 1) + tx(i)) / 2;
-        ctx.bezierCurveTo(cpx, ty(points[i - 1]!), cpx, ty(points[i]!), tx(i), ty(points[i]!));
+        ctx.bezierCurveTo(
+          cpx,
+          ty(points[i - 1]!),
+          cpx,
+          ty(points[i]!),
+          tx(i),
+          ty(points[i]!),
+        );
       }
       ctx.lineTo(tx(points.length - 1), pad.top + ch);
       ctx.lineTo(tx(0), pad.top + ch);
@@ -78,7 +97,14 @@ export default function ResponseChart() {
       ctx.moveTo(tx(0), ty(points[0]!));
       for (let i = 1; i < points.length; i++) {
         const cpx = (tx(i - 1) + tx(i)) / 2;
-        ctx.bezierCurveTo(cpx, ty(points[i - 1]!), cpx, ty(points[i]!), tx(i), ty(points[i]!));
+        ctx.bezierCurveTo(
+          cpx,
+          ty(points[i - 1]!),
+          cpx,
+          ty(points[i]!),
+          tx(i),
+          ty(points[i]!),
+        );
       }
       ctx.strokeStyle = "#22D3EE";
       ctx.lineWidth = 1.5;
@@ -115,7 +141,9 @@ export default function ResponseChart() {
               key={r}
               onClick={() => setRange(r)}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                range === r ? "bg-white/8 text-white" : "text-zinc-600 hover:text-zinc-400"
+                range === r
+                  ? "bg-white/8 text-white"
+                  : "text-zinc-600 hover:text-zinc-400"
               }`}
             >
               {r}
@@ -133,7 +161,9 @@ export default function ResponseChart() {
           { label: "Peak", value: `${peak}ms` },
         ].map((p) => (
           <div key={p.label} className="text-center">
-            <p className="text-[10px] text-zinc-600 uppercase tracking-widest">{p.label}</p>
+            <p className="text-[10px] text-zinc-600 uppercase tracking-widest">
+              {p.label}
+            </p>
             <p className="text-sm font-semibold text-white mt-0.5">{p.value}</p>
           </div>
         ))}

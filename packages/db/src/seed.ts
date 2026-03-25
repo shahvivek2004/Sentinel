@@ -2,12 +2,10 @@ import { db } from ".";
 
 async function main() {
   const regions = [
-    { name: "asia" },
-    { name: "north-america" },
-    { name: "south-america" },
-    { name: "australia" },
-    { name: "africa" },
-    { name: "europe" },
+    { name: "Asia" },
+    { name: "America" },
+    { name: "Australia" },
+    { name: "Europe" },
   ];
   const response = await db.region.findMany();
   if (!response || !response.length) {

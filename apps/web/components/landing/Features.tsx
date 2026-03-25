@@ -1,19 +1,31 @@
 const features = [
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="w-5 h-5"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
         <circle cx="12" cy="12" r="3" />
         <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
       </svg>
     ),
     title: "Multi-region checks",
     description:
-      "Every monitor runs from 7+ PoPs across North America, Europe, Asia-Pacific and South America. A single region outage won't trigger a false alarm.",
+      "Every monitor runs from 4+ PoPs across America, Europe, Asia and Australia. A single region outage won't trigger a false alarm.",
     tag: "Global",
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="w-5 h-5"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
         <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
       </svg>
     ),
@@ -24,7 +36,13 @@ const features = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="w-5 h-5"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
         <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     ),
@@ -35,7 +53,13 @@ const features = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="w-5 h-5"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
         <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
       </svg>
     ),
@@ -46,7 +70,13 @@ const features = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="w-5 h-5"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
         <path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
       </svg>
     ),
@@ -57,7 +87,13 @@ const features = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="w-5 h-5"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
         <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
       </svg>
     ),

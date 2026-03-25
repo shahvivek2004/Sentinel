@@ -1,13 +1,23 @@
 const STATS = [
   {
-    label: "Avg Uptime",
+    label: "Average Uptime",
     value: "99.98%",
     delta: "+0.02%",
     positive: true,
     sub: "Last 30 days",
     icon: (
-      <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
-        <path d="M2 10h4l3-7 4 14 3-7h2" strokeLinecap="round" strokeLinejoin="round" />
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        className="w-4 h-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
+        <path
+          d="M2 10h4l3-7 4 14 3-7h2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
   },
@@ -18,7 +28,13 @@ const STATS = [
     positive: true,
     sub: "This month",
     icon: (
-      <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        className="w-4 h-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
         <circle cx="10" cy="10" r="8" />
         <path d="M10 6v4l2.5 2.5" strokeLinecap="round" />
       </svg>
@@ -31,7 +47,13 @@ const STATS = [
     positive: false,
     sub: "Last 7 days",
     icon: (
-      <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        className="w-4 h-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
         <path d="M10 2L2 17h16L10 2z" strokeLinejoin="round" />
         <path d="M10 8v4M10 14h.01" strokeLinecap="round" />
       </svg>
@@ -44,8 +66,17 @@ const STATS = [
     positive: true,
     sub: "Last 24 hours",
     icon: (
-      <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="1.5">
-        <path d="M3 10a7 7 0 1014 0A7 7 0 003 10zM10 7v3l2 2" strokeLinecap="round" />
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        className="w-4 h-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
+        <path
+          d="M3 10a7 7 0 1014 0A7 7 0 003 10zM10 7v3l2 2"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },
@@ -66,9 +97,13 @@ export default function StatsRow() {
               {s.icon}
             </div>
           </div>
-          <p className="text-2xl font-bold text-white leading-none mb-1">{s.value}</p>
+          <p className="text-2xl font-bold text-white leading-none mb-1">
+            {s.value}
+          </p>
           <div className="flex items-center gap-1.5">
-            <span className={`text-xs font-medium ${s.positive ? "text-emerald-400" : "text-amber-400"}`}>
+            <span
+              className={`text-xs font-medium ${s.positive ? "text-emerald-400" : "text-amber-400"}`}
+            >
               {s.delta}
             </span>
             <span className="text-xs text-zinc-700">{s.sub}</span>

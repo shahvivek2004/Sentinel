@@ -1,6 +1,6 @@
 export default function UptimeBar() {
   const stats = [
-    { value: "7+", label: "Global locations" },
+    { value: "4+", label: "Global locations" },
     { value: "50K+", label: "Monitors active" },
     { value: "99.98%", label: "Average uptime" },
     { value: "<30s", label: "Alert delivery" },

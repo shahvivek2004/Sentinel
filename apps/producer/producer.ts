@@ -21,6 +21,7 @@ type SiteInputData = {
   timeout: number;
   sslVerify: boolean;
   followRedirect: boolean;
+  primeRegionId: string;
   body?: PrismaJson;
   header?: PrismaJson;
   maintenanceStartMin: number | null;
@@ -69,6 +70,7 @@ async function init() {
       intervalTime: true,
       method: true,
       timeout: true,
+      primeRegionId: true,
       sslVerify: true,
       followRedirect: true,
       body: true,

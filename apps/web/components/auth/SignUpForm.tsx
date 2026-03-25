@@ -31,7 +31,11 @@ export default function SignUpForm() {
     e.preventDefault();
     setServerError("");
 
-    const result = requiredBodySignup.safeParse({ username: name, email, password });
+    const result = requiredBodySignup.safeParse({
+      username: name,
+      email,
+      password,
+    });
 
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -59,11 +63,13 @@ export default function SignUpForm() {
         withCredentials: true,
       });
       setState("success");
-      router.push('/login');
+      router.push("/signin");
     } catch (err) {
       setState("error");
       if (axios.isAxiosError(err)) {
-        const msg = err.response?.data?.message ?? "Something went wrong. Please try again.";
+        const msg =
+          err.response?.data?.message ??
+          "Something went wrong. Please try again.";
         if (msg.toLowerCase().includes("already exist")) {
           setErrors({ email: "An account with this email already exists." });
         } else {
@@ -79,18 +85,32 @@ export default function SignUpForm() {
     return (
       <div className="animate-fade-up text-center">
         <div className="w-14 h-14 bg-cyan-400/10 border border-cyan-400/20 rounded-full flex items-center justify-center mx-auto mb-5">
-          <svg className="w-7 h-7 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M4 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+          <svg
+            className="w-7 h-7 text-cyan-400"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <path
+              d="M4 12l5 5L20 7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Check your inbox</h2>
         <p className="text-sm text-zinc-400 leading-relaxed mb-6 max-w-xs mx-auto">
           We sent a confirmation link to{" "}
-          <span className="text-white font-medium">{email}</span>. Click it to activate your account.
+          <span className="text-white font-medium">{email}</span>. Click it to
+          activate your account.
         </p>
         <p className="text-xs text-zinc-600">
           Didn&apos;t get it?{" "}
-          <button onClick={() => setState("idle")} className="text-cyan-400 hover:text-cyan-300 transition-colors">
+          <button
+            onClick={() => setState("idle")}
+            className="text-cyan-400 hover:text-cyan-300 transition-colors"
+          >
             Resend email
           </button>
         </p>
@@ -103,12 +123,19 @@ export default function SignUpForm() {
       {/* Header */}
       <div className="mb-8">
         <div className="inline-flex items-center gap-2 bg-cyan-400/10 border border-cyan-400/15 rounded-full px-3 py-1 mb-4">
-          <span className="text-xs text-cyan-400 font-medium">Free forever for 5 monitors</span>
+          <span className="text-xs text-cyan-400 font-medium">
+            Free forever for 5 monitors
+          </span>
         </div>
-        <h1 className="text-2xl font-bold text-white tracking-tight mb-1.5">Create your account</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight mb-1.5">
+          Create your account
+        </h1>
         <p className="text-sm text-zinc-500">
           Already have an account?{" "}
-          <Link href="/signin" className="text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
+          <Link
+            href="/signin"
+            className="text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
+          >
             Sign in
           </Link>
         </p>
@@ -117,7 +144,13 @@ export default function SignUpForm() {
       {/* Server error */}
       {serverError && (
         <div className="flex items-start gap-3 bg-red-500/8 border border-red-500/20 rounded-lg px-4 py-3 mb-5">
-          <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            className="w-4 h-4 text-red-400 shrink-0 mt-0.5"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <circle cx="8" cy="8" r="6.5" />
             <path d="M8 5v3.5M8 11h.01" strokeLinecap="round" />
           </svg>
@@ -125,13 +158,16 @@ export default function SignUpForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-3">
         <InputField
           label="Full name"
           type="text"
           placeholder="Ada Lovelace"
           value={name}
-          onChange={(e) => { setName(e.target.value); clearError("name"); }}
+          onChange={(e) => {
+            setName(e.target.value);
+            clearError("name");
+          }}
           error={errors.name}
           autoComplete="name"
           autoFocus
@@ -142,7 +178,10 @@ export default function SignUpForm() {
           type="email"
           placeholder="ada@company.com"
           value={email}
-          onChange={(e) => { setEmail(e.target.value); clearError("email"); }}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            clearError("email");
+          }}
           error={errors.email}
           autoComplete="email"
         />
@@ -152,7 +191,10 @@ export default function SignUpForm() {
           type="password"
           placeholder="Min. 10 characters"
           value={password}
-          onChange={(e) => { setPassword(e.target.value); clearError("password"); }}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            clearError("password");
+          }}
           error={errors.password}
           autoComplete="new-password"
         />
@@ -160,17 +202,31 @@ export default function SignUpForm() {
 
         {/* Terms */}
         <div>
-          <label className={`flex items-start gap-3 cursor-pointer group ${errors.agreed ? "text-red-400" : ""}`}>
+          <label
+            className={`flex items-start gap-3 cursor-pointer group ${errors.agreed ? "text-red-400" : ""}`}
+          >
             <div className="relative shrink-0 mt-0.5">
               <input
                 type="checkbox"
                 checked={agreed}
-                onChange={(e) => { setAgreed(e.target.checked); clearError("agreed"); }}
+                onChange={(e) => {
+                  setAgreed(e.target.checked);
+                  clearError("agreed");
+                }}
                 className="sr-only"
               />
-              <div className={`w-4 h-4 rounded border transition-all duration-150 flex items-center justify-center ${agreed ? "bg-cyan-400 border-cyan-400" : errors.agreed ? "border-red-500/60 bg-red-500/5" : "border-white/20 bg-white/4 group-hover:border-white/30"}`}>
+              <div
+                className={`w-4 h-4 rounded border transition-all duration-150 flex items-center justify-center ${agreed ? "bg-cyan-400 border-cyan-400" : errors.agreed ? "border-red-500/60 bg-red-500/5" : "border-white/20 bg-white/4 group-hover:border-white/30"}`}
+              >
                 {agreed && (
-                  <svg className="w-2.5 h-2.5 text-black" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <svg
+                    className="w-2.5 h-2.5 text-black"
+                    viewBox="0 0 10 10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
                     <path d="M2 5l2.5 2.5L8 3" />
                   </svg>
                 )}
@@ -178,11 +234,17 @@ export default function SignUpForm() {
             </div>
             <span className="text-xs text-zinc-500 leading-relaxed">
               I agree to the{" "}
-              <Link href="/terms" className="text-zinc-300 hover:text-white underline underline-offset-2 transition-colors">
+              <Link
+                href="/terms"
+                className="text-zinc-300 hover:text-white underline underline-offset-2 transition-colors"
+              >
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="text-zinc-300 hover:text-white underline underline-offset-2 transition-colors">
+              <Link
+                href="/privacy"
+                className="text-zinc-300 hover:text-white underline underline-offset-2 transition-colors"
+              >
                 Privacy Policy
               </Link>
             </span>
@@ -199,9 +261,24 @@ export default function SignUpForm() {
         >
           {state === "loading" ? (
             <>
-              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
+              <svg
+                className="w-4 h-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
+                />
               </svg>
               Creating account…
             </>
@@ -212,7 +289,7 @@ export default function SignUpForm() {
       </form>
 
       {/* Trust signals */}
-      <div className="mt-7 pt-6 border-t border-white/5 grid grid-cols-3 gap-3">
+      {/* <div className="mt-7 pt-6 border-t border-white/5 grid grid-cols-3 gap-3">
         {[
           { icon: "🔒", label: "SOC 2 ready" },
           { icon: "🌍", label: "GDPR compliant" },
@@ -223,7 +300,7 @@ export default function SignUpForm() {
             <p className="text-[10px] text-zinc-600 leading-tight">{t.label}</p>
           </div>
         ))}
-      </div>
+      </div> */}
     </div>
   );
 }

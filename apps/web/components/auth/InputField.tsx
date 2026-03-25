@@ -124,11 +124,15 @@ interface PasswordStrengthProps {
 }
 
 export function PasswordStrength({ password }: PasswordStrengthProps) {
-  const { score, label, color } = password ? getStrength(password) : { score: 0, label: "", color: "" };
+  const { score, label, color } = password
+    ? getStrength(password)
+    : { score: 0, label: "", color: "" };
   const filled = Math.min(score, 4);
 
   return (
-    <div className="mt-2 space-y-1.5 min-h-8">  {/* always rendered, always takes space */}
+    <div className="mt-2 space-y-1.5 min-h-8">
+      {" "}
+      {/* always rendered, always takes space */}
       <div className="flex gap-1">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
@@ -137,7 +141,9 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
           />
         ))}
       </div>
-      <p className={`text-xs transition-all duration-300 ${!password ? "opacity-0" : "opacity-100"} ${score <= 1 ? "text-red-400" : score <= 2 ? "text-amber-400" : score <= 3 ? "text-cyan-400" : "text-emerald-400"}`}>
+      <p
+        className={`text-xs transition-all duration-300 ${!password ? "opacity-0" : "opacity-100"} ${score <= 1 ? "text-red-400" : score <= 2 ? "text-amber-400" : score <= 3 ? "text-cyan-400" : "text-emerald-400"}`}
+      >
         {label || "—"} {password ? "password" : ""}
       </p>
     </div>

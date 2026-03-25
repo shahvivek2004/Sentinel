@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import "dotenv/config";
 
 export function sendResponse(res: Response, code: number, value: any) {
@@ -19,6 +19,7 @@ export const JWT_SECRET = requireEnv("JWT_SECRET");
 export const EXP_TIME = requireEnv("EXP_TIME");
 export const STORE_NAME = requireEnv("STORE_NAME");
 export const HASH_STORE_NAME = requireEnv("HASH_STORE_NAME");
+export const LATEST_STATUS_CACHE = requireEnv("LATEST_STATUS_CACHE");
 
 // prod
 export const prodCookieConfig = {
@@ -43,3 +44,10 @@ export const corsConfig = {
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
+
+export interface authRequest extends Request {
+  userId: string;
+  cookies: {
+    __uIt: string;
+  };
+}
