@@ -9,6 +9,7 @@ import {
 
 import {
   HASH_STORE_NAME,
+  LATEST_STATUS_CACHE,
   sendResponse,
   STORE_NAME,
   type authRequest,
@@ -25,22 +26,11 @@ type days =
   | "Friday"
   | "Saturday";
 
-type SiteInputData = {
-  id: string;
-  url: string;
-  intervalTime: number;
-  method: string;
-  timeout: number;
-  sslVerify: boolean;
-  followRedirect: boolean;
-  body?: PrismaJson;
-  header?: PrismaJson;
-  maintenanceStartMin: number | null;
-  maintenanceEndMin: number | null;
-  maintenanceDays: days[];
-};
-
 const sitesRouter = Router();
+
+async function assertSiteOwner(siteId: string, userId: string) {
+  return db.site.findFirst({ where: { id: siteId, userid: userId } });
+}
 
 // insert site which needs to be monitored
 sitesRouter.post(
@@ -138,7 +128,8 @@ sitesRouter.patch(
 
       const parsed = requiredBodyUrlPatch.safeParse(req.body);
       if (!parsed.success) {
-        sendResponse(res, 400, parsed.error.issues[0]?.message ?? "error!");
+        const error = parsed.error.issues[0]?.message;
+        sendResponse(res, 400, error ?? "error!");
         return;
       }
 
@@ -160,11 +151,26 @@ sitesRouter.patch(
         return;
       }
 
-      const result: SiteInputData = await db.site.update({
+      const result = await db.site.update({
         where: {
           id: siteId,
         },
         data: updateData,
+        select: {
+          id: true,
+          url: true,
+          intervalTime: true,
+          method: true,
+          primeRegionId: true,
+          timeout: true,
+          sslVerify: true,
+          followRedirect: true,
+          body: true,
+          header: true,
+          maintenanceStartMin: true,
+          maintenanceEndMin: true,
+          maintenanceDays: true,
+        },
       });
 
       await redisClient.hSet(
@@ -180,17 +186,56 @@ sitesRouter.patch(
   },
 );
 
-async function assertSiteOwner(siteId: string, userId: string) {
-  return db.site.findFirst({ where: { id: siteId, userid: userId } });
-}
+sitesRouter.delete(
+  "/url/delete/:siteId",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as authRequest).userId;
+      const siteId = req.params.siteId as string;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/v1/sites/:siteId/overview?region=<regionId>
-//
-// Returns:
-//   site_id, url, current_status, current_latency_ms,
-//   uptime_30d_pct, daily_bars[30]
-// ─────────────────────────────────────────────────────────────────────────────
+      if (!siteId) {
+        sendResponse(res, 400, "Bad request!");
+      }
+
+      if (!userId) {
+        sendResponse(res, 401, "Unauthenticated!");
+        return;
+      }
+
+      const response = await db.site.findUnique({
+        where: {
+          id: siteId,
+        },
+      });
+
+      if (!response) {
+        sendResponse(res, 404, "Not found!");
+        return;
+      }
+
+      if (response.userid !== userId) {
+        sendResponse(res, 403, "Unauthorized!");
+        return;
+      }
+
+      await db.site.delete({
+        where: {
+          id: siteId,
+        },
+      });
+
+      const pipeline = redisClient.multi();
+      pipeline.zRem(STORE_NAME, siteId);
+      pipeline.hDel(HASH_STORE_NAME, siteId);
+      pipeline.hDel(LATEST_STATUS_CACHE, siteId);
+      await pipeline.exec();
+      sendResponse(res, 201, "Deleted successfully!");
+    } catch (error) {
+      sendResponse(res, 500, "Internal server error!");
+    }
+  },
+);
 
 sitesRouter.get(
   "/:siteId/overview",
@@ -272,14 +317,6 @@ sitesRouter.get(
   },
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/v1/sites/:siteId/timeseries?range=24h|7d|30d&region=<regionId>
-//
-// Returns:
-//   points[]: { bucket, avg_rt, min_rt, max_rt, p90, p95, p99 }
-//   stats:    { avg, min, max, p90, p95, p99 }          (over the full range)
-// ─────────────────────────────────────────────────────────────────────────────
-
 sitesRouter.get(
   "/:siteId/timeseries",
   authMiddleware,
@@ -298,9 +335,6 @@ sitesRouter.get(
     const site = await assertSiteOwner(siteId, userId);
     if (!site) return sendResponse(res, 404, "Site not found");
 
-    // For 24h use the 30-min aggregate; for 7d/30d use the daily aggregate.
-    // The bucket label sent back is an ISO timestamp so the front-end can
-    // format it however it likes.
     const use30m = range === "24h";
     const intervalMap: Record<string, string> = {
       "24h": "24 hours",
@@ -397,21 +431,6 @@ sitesRouter.get(
   },
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/v1/sites/:siteId/incidents?from=YYYY-MM-DD&to=YYYY-MM-DD&region=
-//
-// Returns:
-//   uptime_pct, total_incidents, total_downtime_minutes, from, to
-//
-// An "incident" is a contiguous run of Down ticks.  We detect them by looking
-// at consecutive raw ticks and grouping runs of Down ticks together using a
-// gaps-and-islands approach on raw_tick_status.
-//
-// NOTE: raw_tick_status is only retained for 3 days per your retention policy.
-// For older ranges we fall back to the daily aggregate and report 0 incidents
-// (incident detection needs raw data).
-// ─────────────────────────────────────────────────────────────────────────────
-
 sitesRouter.get(
   "/:siteId/incidents",
   authMiddleware,
@@ -443,7 +462,6 @@ sitesRouter.get(
     if (!site) return sendResponse(res, 404, "Site not found");
 
     try {
-      // Uptime % — still from aggregate_daily (correct source for this)
       const uptimeRes = await pool.query<{
         total_checks: string;
         up_checks: string;
@@ -499,6 +517,38 @@ sitesRouter.get(
     } catch (err) {
       console.error("Failed to GET incidents:", err);
       return sendResponse(res, 500, "Internal server error!");
+    }
+  },
+);
+
+sitesRouter.get(
+  "/incidents",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as authRequest).userId;
+      const incidents = await db.incident.findMany({
+        where: {
+          site: {
+            userid: userId,
+          },
+        },
+        orderBy: {
+          startedAt: "desc",
+        },
+        take: 20,
+        include: {
+          site: {
+            select: {
+              id: true,
+              url: true,
+            },
+          },
+        },
+      });
+      sendResponse(res, 200, { data: incidents });
+    } catch (error) {
+      sendResponse(res, 500, "Internal server error!");
     }
   },
 );

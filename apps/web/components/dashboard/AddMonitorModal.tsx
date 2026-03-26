@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { requiredBodyUrlPost } from "@repo/zod/validation";
+import { HTTP_URL } from "../../proxy";
 // ─────────────────────────────────────────────────────────────────────────────
 // Zod schema — mirrors server-side exactly
 // ─────────────────────────────────────────────────────────────────────────────
@@ -24,35 +25,41 @@ type FieldErrors = Partial<Record<keyof FormValues | "root", string>>;
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"] as const;
 const DAYS = [
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-  "SUNDAY",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
 ] as const;
 const DAY_SHORT: Record<string, string> = {
-  MONDAY: "Mon",
-  TUESDAY: "Tue",
-  WEDNESDAY: "Wed",
-  THURSDAY: "Thu",
-  FRIDAY: "Fri",
-  SATURDAY: "Sat",
-  SUNDAY: "Sun",
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun",
 };
 
 const INTERVAL_PRESETS = [
   { label: "1m", value: 60 },
   { label: "2m", value: 120 },
+  { label: "3m", value: 180 },
   { label: "5m", value: 300 },
+  { label: "7m", value: 420 },
   { label: "10m", value: 600 },
+  { label: "12m", value: 720 },
   { label: "15m", value: 900 },
 ];
 
 const TIMEOUT_PRESETS = [
   { label: "1s", value: 1000 },
+  { label: "2s", value: 2000 },
+  { label: "3s", value: 3000 },
   { label: "5s", value: 5000 },
+  { label: "7s", value: 7000 },
   { label: "10s", value: 10000 },
   { label: "15s", value: 15000 },
 ];
@@ -70,8 +77,6 @@ const DEFAULTS: FormValues = {
   maintenanceEndMin: "",
   maintenanceDays: [],
 };
-
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -239,12 +244,16 @@ interface AddMonitorModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: (site: CreatedSite) => void;
+  mode?: "create" | "edit"; // NEW
+  initialData?: CreatedSite | null; // NEW
 }
 
 export default function AddMonitorModal({
   open,
   onClose,
   onSuccess,
+  mode,
+  initialData,
 }: AddMonitorModalProps) {
   const [values, setValues] = useState<FormValues>(DEFAULTS);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -252,17 +261,35 @@ export default function AddMonitorModal({
   const [done, setDone] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const isEdit = mode === "edit" && initialData;
 
   // Reset on open
   useEffect(() => {
     if (open) {
-      setValues(DEFAULTS);
+      if (mode === "edit" && initialData) {
+        setValues({
+          ...DEFAULTS,
+          url: initialData.url,
+          intervalTime: String(initialData.intervalTime),
+          method: initialData.method as
+            | "GET"
+            | "POST"
+            | "PUT"
+            | "PATCH"
+            | "DELETE"
+            | "HEAD",
+          timeout: String(initialData.timeout),
+        });
+      } else {
+        setValues(DEFAULTS);
+      }
+
       setErrors({});
       setDone(false);
       setSubmitting(false);
       setTimeout(() => firstInputRef.current?.focus(), 80);
     }
-  }, [open]);
+  }, [open, mode, initialData]);
 
   // Escape to close
   useEffect(() => {
@@ -362,8 +389,12 @@ export default function AddMonitorModal({
       if (values.body.trim()) payload.body = JSON.parse(values.body);
       if (values.header.trim()) payload.header = JSON.parse(values.header);
 
-      const res = await fetch(`${BASE}/sites/url`, {
-        method: "POST",
+      const url = isEdit
+        ? `${HTTP_URL}/api/v1/sites/url/${initialData.id}`
+        : `${HTTP_URL}/api/v1/sites/url`;
+
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -386,15 +417,25 @@ export default function AddMonitorModal({
 
       setDone(true);
       // API returns { siteId } — reconstruct a CreatedSite for optimistic insert
-      onSuccess?.({
-        id: json.message.data.id,
-        primeRegionId: "04c66f73-92fe-4794-ae20-b81e271590b9", // default from schema
-        url: values.url,
-        timeAdded: new Date(),
-        intervalTime: Number(values.intervalTime),
-        method: values.method,
-        timeout: Number(values.timeout),
-      });
+      if (isEdit) {
+        onSuccess?.({
+          ...initialData!,
+          url: values.url,
+          intervalTime: Number(values.intervalTime),
+          method: values.method,
+          timeout: Number(values.timeout),
+        });
+      } else {
+        onSuccess?.({
+          id: json.message.data.id,
+          primeRegionId: "04c66f73-92fe-4794-ae20-b81e271590b9",
+          url: values.url,
+          timeAdded: new Date(),
+          intervalTime: Number(values.intervalTime),
+          method: values.method,
+          timeout: Number(values.timeout),
+        });
+      }
       setTimeout(onClose, 1400);
     } catch {
       setErrors({ root: "Network error. Please try again." });
@@ -478,7 +519,10 @@ export default function AddMonitorModal({
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <form
+            onSubmit={handleSubmit}
+            className="flex-1 overflow-y-auto custom-scrollbar"
+          >
             <div className="px-6 py-5 space-y-4">
               {/* Root error */}
               {errors.root && (
@@ -740,6 +784,8 @@ export default function AddMonitorModal({
                       </svg>
                       Creating…
                     </>
+                  ) : isEdit ? (
+                    "Update monitor"
                   ) : (
                     "Create monitor"
                   )}

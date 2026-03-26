@@ -172,6 +172,9 @@ export default function MonitorList() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null);
+
   const atLimit = monitors.length >= MONITOR_LIMIT;
 
   const fetchDashboard = useCallback(async () => {
@@ -213,6 +216,29 @@ export default function MonitorList() {
   // latest is null until the first check runs and populates Redis.
   function handleMonitorCreated(newSite: SiteData) {
     setMonitors((prev) => [...prev, { ...newSite, latest: null }]);
+  }
+
+  function handleEdit(m: Monitor) {
+    setEditingMonitor(m);
+    setEditModalOpen(true);
+  }
+
+  async function handleDelete(m: Monitor) {
+    const confirmDelete = confirm(`Delete monitor ${getHostname(m.url)}?`);
+    if (!confirmDelete) return;
+
+    try {
+      await fetch(`${HTTP_URL}/api/v1/sites/url/delete/${m.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      // optimistic UI
+      setMonitors((prev) => prev.filter((x) => x.id !== m.id));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete monitor");
+    }
   }
 
   // Derived counts
@@ -476,10 +502,14 @@ export default function MonitorList() {
                         <circle cx="8" cy="8" r="2" />
                       </svg>
                     </button>
+
                     <button
                       className="p-1.5 rounded-md hover:bg-white/6 text-zinc-600 hover:text-zinc-300 transition-all"
                       title="Edit"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(m);
+                      }}
                     >
                       <svg
                         viewBox="0 0 16 16"
@@ -494,10 +524,14 @@ export default function MonitorList() {
                         />
                       </svg>
                     </button>
+
                     <button
                       className="p-1.5 rounded-md hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-all"
                       title="Delete"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(m);
+                      }}
                     >
                       <svg
                         viewBox="0 0 16 16"
@@ -581,6 +615,22 @@ export default function MonitorList() {
         onSuccess={(newSite) => {
           handleMonitorCreated(newSite);
           setModalOpen(false);
+        }}
+      />
+
+      <AddMonitorModal
+        open={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingMonitor(null);
+        }}
+        mode="edit"
+        initialData={editingMonitor || undefined}
+        onSuccess={(updated) => {
+          setMonitors((prev) =>
+            prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)),
+          );
+          setEditModalOpen(false);
         }}
       />
     </>

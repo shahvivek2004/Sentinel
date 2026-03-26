@@ -73,6 +73,7 @@ const NAV = [
         />
       </svg>
     ),
+    soon: true,
   },
   {
     label: "Settings",
