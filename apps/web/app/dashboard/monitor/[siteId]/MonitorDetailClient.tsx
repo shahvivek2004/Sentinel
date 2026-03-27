@@ -710,7 +710,7 @@ function IncidentsSection({
   return (
     <SectionCard>
       <SectionHeader
-        title="SLA & Incident Report"
+        title="Overall SLA & Incident Report"
         right={
           <p className="text-xs text-zinc-600">
             Calculate uptime for a custom date range

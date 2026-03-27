@@ -335,7 +335,7 @@ sitesRouter.get(
     const site = await assertSiteOwner(siteId, userId);
     if (!site) return sendResponse(res, 404, "Site not found");
 
-    const use30m = range === "24h";
+    const use30m = range === "24h" || range === "7d";
     const intervalMap: Record<string, string> = {
       "24h": "24 hours",
       "7d": "7 days",

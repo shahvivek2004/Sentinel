@@ -163,7 +163,7 @@ export default function Sidebar() {
       {/* Bottom */}
       <div className="px-3 py-4 border-t border-white/6 space-y-1">
         {/* Plan badge */}
-        <div className="px-3 py-2 rounded-lg bg-cyan-400/6 border border-cyan-400/10 mb-3">
+        {/* <div className="px-3 py-2 rounded-lg bg-cyan-400/6 border border-cyan-400/10 mb-3">
           <p className="text-[10px] text-zinc-500 mb-0.5">Current plan</p>
           <div className="flex items-center justify-between">
             <span className="text-xs text-white font-medium">Hobby</span>
@@ -178,7 +178,7 @@ export default function Sidebar() {
             <div className="h-full w-[60%] bg-cyan-400 rounded-full" />
           </div>
           <p className="text-[10px] text-zinc-600 mt-1">3 / 5 monitors used</p>
-        </div>
+        </div> */}
 
         {/* User */}
         <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/4 transition-all group">
